@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Symulator & Oscyloskop RLC 20–100 kHz</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #131a22;
+      --border: #24303c;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --ch1: #facc15;
+      --ch2: #38bdf8;
+      --ch3: #22c55e;
+      --danger: #ef4444;
+      --accent: #3b82f6;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #1e293b;
+      color: var(--ch2);
+      border: 1px solid var(--border);
+    }
+
+    .ha-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ha-bar input {
+      background: #0b0f14;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .ha-bar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .ha-status {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      padding: 16px;
+      flex: 1;
+    }
+
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .field input[type="number"] {
+      width: 125px;
+      background: #0b0f14;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .field input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .sweep-box {
+      background: #0e141b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-sweep {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: #1d4ed8;
+      color: #fff;
+      transition: background 0.2s;
+    }
+
+    .btn-sweep.active {
+      background: #dc2626;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.82; }
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      background: #0b0f14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .metric .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .metric .val {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .neon-indicator {
+      grid-column: span 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: #0b0f14;
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+
+    .neon-lamp {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #334155;
+      transition: all 0.15s;
+    }
+
+    .neon-lamp.lit {
+      background: #ff5500;
+      box-shadow: 0 0 14px #ff5500, 0 0 28px #ff2200;
+    }
+
+    .scope-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .scope-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .scope-controls select {
+      background: #0b0f14;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      border-radius: 6px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 430px;
+      background: #070a0e;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>
+    ⚡ Generator & Symulator RLC
+    <span class="badge">ESP32 20–100 kHz</span>
+  </h1>
+  <div class="ha-bar">
+    <input type="text" id="haUrl" placeholder="http://homeassistant.local:8123" size="26" />
+    <input type="password" id="haToken" placeholder="Token dostępu HA (opcjonalnie)" size="24" />
+    <button id="connectHaBtn">Połącz z HA</button>
+    <span class="ha-status" id="haStatus">Tryb lokalny (Symulator)</span>
+  </div>
+</header>
+
+<main>
+  <!-- PANEL NASTAW -->
+  <section class="card">
+    <h2>Nastawy obwodu i generatora</h2>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="freqInput">1. Częstotliwość (Hz)</label>
+        <input type="number" id="freqInput" min="20000" max="100000" step="10" value="40000" />
+      </div>
+      <input type="range" id="freqSlider" min="20000" max="100000" step="100" value="40000" />
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="dutyInput">2. Wypełnienie PWM (%)</label>
+        <input type="number" id="dutyInput" min="1" max="99" step="1" value="50" />
+      </div>
+      <input type="range" id="dutySlider" min="1" max="99" step="1" value="50" />
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="capInput">3. Pojemność C (nF)</label>
+        <input type="number" id="capInput" min="1" max="10000" step="1" value="100" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="indInput">4. Indukcyjność L (µH)</label>
+        <input type="number" id="indInput" min="1" max="10000" step="1" value="150" />
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-row">
+        <label for="supInput">5. Zasilanie MOSFET (V)</label>
+        <input type="number" id="supInput" min="5" max="30" step="0.5" value="12" />
+      </div>
+    </div>
+
+    <div class="sweep-box">
+      <div class="field-row">
+        <label for="stepInput">Krok przemiatania (Hz)</label>
+        <input type="number" id="stepInput" min="100" max="5000" step="100" value="1000" style="width:100px;background:#0b0f14;border:1px solid #24303c;color:#fff;padding:5px;border-radius:6px;text-align:right;" />
+      </div>
+      <button id="sweepBtn" class="btn-sweep">▶ Start przemiatania 20–100 kHz</button>
+    </div>
+
+    <h2>Odczyty i rezonans</h2>
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Rezonans f₀</div>
+        <div class="val" id="f0Val" style="color: var(--ch2);">41.1 kHz</div>
+      </div>
+      <div class="metric">
+        <div class="label">Napięcie szczytowe</div>
+        <div class="val" id="vPeakVal" style="color: var(--ch3);">0.0 V</div>
+      </div>
+      <div class="neon-indicator">
+        <span>Ochrona MOSFET (Neonówka ~85V)</span>
+        <div class="neon-lamp" id="neonLamp"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EKRAN OSCYLOSKOPU -->
+  <section class="card">
+    <div class="scope-header">
+      <div class="legend">
+        <span><i class="dot" style="background: var(--ch1);"></i> CH1: PWM (Zasilanie)</span>
+        <span><i class="dot" style="background: var(--ch2);"></i> CH2: Model rezonansu LC</span>
+        <span><i class="dot" style="background: var(--ch3);"></i> CH3: Pomiar ADC (ESP32)</span>
+        <span><i class="dot" style="background: var(--danger);"></i> Próg neonówki (85 V)</span>
+      </div>
+      <div class="scope-controls">
+        <label>Czas okna:
+          <select id="timeWindow">
+            <option value="25">25 µs</option>
+            <option value="50" selected>50 µs</option>
+            <option value="100">100 µs</option>
+          </select>
+        </label>
+        <label>Skala V:
+          <select id="voltScale">
+            <option value="60">±60 V</option>
+            <option value="130" selected>±130 V</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="scopeCanvas"></canvas>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Stan symulatora
+  const state = {
+    freq: 40000,
+    duty: 50,
+    capNf: 100,
+    indUh: 150,
+    supplyV: 12,
+    sweepStep: 1000,
+    sweeping: false,
+    measuredAdcV: 0,
+    haConnected: false,
+    haUrl: localStorage.getItem('ha_url') || '',
+    haToken: localStorage.getItem('ha_token') || ''
+  };
+
+  // Elementy DOM
+  const freqInput = document.getElementById('freqInput');
+  const freqSlider = document.getElementById('freqSlider');
+  const dutyInput = document.getElementById('dutyInput');
+  const dutySlider = document.getElementById('dutySlider');
+  const capInput = document.getElementById('capInput');
+  const indInput = document.getElementById('indInput');
+  const supInput = document.getElementById('supInput');
+  const stepInput = document.getElementById('stepInput');
+  const sweepBtn = document.getElementById('sweepBtn');
+  const f0Val = document.getElementById('f0Val');
+  const vPeakVal = document.getElementById('vPeakVal');
+  const neonLamp = document.getElementById('neonLamp');
+  const timeWindowSel = document.getElementById('timeWindow');
+  const voltScaleSel = document.getElementById('voltScale');
+  const canvas = document.getElementById('scopeCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Konfiguracja HA
+  const haUrlInput = document.getElementById('haUrl');
+  const haTokenInput = document.getElementById('haToken');
+  const haStatus = document.getElementById('haStatus');
+  haUrlInput.value = state.haUrl;
+  haTokenInput.value = state.haToken;
+
+  async function callHaService(domain, service, data) {
+    if (!state.haConnected) return;
+    try {
+      await fetch(`${state.haUrl}/api/services/${domain}/${service}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.haToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+    } catch (e) {
+      console.warn('Błąd wysyłania do HA:', e);
+    }
+  }
+
+  async function pollHaStates() {
+    if (!state.haConnected) return;
+    try {
+      const res = await fetch(`${state.haUrl}/api/states/sensor.esp32_rlc_symulator_zmierzone_napiecie_szczytowe_v`, {
+        headers: { 'Authorization': `Bearer ${state.haToken}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const val = parseFloat(json.state);
+        if (!isNaN(val)) state.measuredAdcV = val;
+      }
+    } catch (e) {
+      console.warn('Błąd odczytu ADC z HA:', e);
+    }
+  }
+
+  document.getElementById('connectHaBtn').addEventListener('click', async () => {
+    state.haUrl = haUrlInput.value.replace(/\/$/, '');
+    state.haToken = haTokenInput.value.trim();
+    localStorage.setItem('ha_url', state.haUrl);
+    localStorage.setItem('ha_token', state.haToken);
+
+    try {
+      const res = await fetch(`${state.haUrl}/api/`, {
+        headers: { 'Authorization': `Bearer ${state.haToken}` }
+      });
+      if (res.ok) {
+        state.haConnected = true;
+        haStatus.textContent = '🟢 Połączono z Home Assistant';
+        haStatus.style.color = '#22c55e';
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    } catch (e) {
+      state.haConnected = false;
+      haStatus.textContent = '🔴 Błąd połączenia (sprawdź CORS / Token)';
+      haStatus.style.color = '#ef4444';
+    }
+  });
+
+  // Obliczenia obwodu LC
+  function calcResonance() {
+    const L = state.indUh * 1e-6;
+    const C = state.capNf * 1e-9;
+    const f0 = 1 / (2 * Math.PI * Math.sqrt(L * C));
+    const ratio = state.freq / f0;
+    const Q = 6.5;
+    const denom = Math.sqrt(1 + Q * Q * Math.pow(ratio - 1 / ratio, 2));
+    const dutyFactor = Math.sin((state.duty / 100) * Math.PI);
+    // Wzmocnienie napięciowe w rezonansie ograniczone zapłonem neonówki przy ~88V
+    const rawPeak = (state.supplyV * Q / denom) * dutyFactor;
+    const clampedPeak = Math.min(rawPeak, 88.0);
+    return { f0, rawPeak, clampedPeak, phaseShift: Math.atan((state.freq - f0) / (f0 * 0.15)) };
+  }
+
+  function syncInputs(source) {
+    if (source === 'slider') {
+      state.freq = parseFloat(freqSlider.value);
+      freqInput.value = state.freq;
+    } else if (source === 'input') {
+      state.freq = Math.min(100000, Math.max(20000, parseFloat(freqInput.value) || 20000));
+      freqSlider.value = state.freq;
+    }
+    state.duty = Math.min(99, Math.max(1, parseFloat(dutyInput.value) || 50));
+    dutySlider.value = state.duty;
+    state.capNf = Math.max(1, parseFloat(capInput.value) || 100);
+    state.indUh = Math.max(1, parseFloat(indInput.value) || 150);
+    state.supplyV = Math.min(30, Math.max(5, parseFloat(supInput.value) || 12));
+    state.sweepStep = Math.max(100, parseFloat(stepInput.value) || 1000);
+
+    callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_1_czestotliwosc_hz', value: state.freq });
+    callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_2_wypelnienie', value: state.duty });
+    callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_3_pojemnosc_c_nf', value: state.capNf });
+    callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_4_indukcyjnosc_l_uh', value: state.indUh });
+    callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_5_napiecie_zasilania_v', value: state.supplyV });
+  }
+
+  freqSlider.addEventListener('input', () => syncInputs('slider'));
+  freqInput.addEventListener('change', () => syncInputs('input'));
+  dutySlider.addEventListener('input', () => { dutyInput.value = dutySlider.value; syncInputs(); });
+  dutyInput.addEventListener('change', () => syncInputs());
+  capInput.addEventListener('change', () => syncInputs());
+  indInput.addEventListener('change', () => syncInputs());
+  supInput.addEventListener('change', () => syncInputs());
+  stepInput.addEventListener('change', () => syncInputs());
+
+  sweepBtn.addEventListener('click', () => {
+    state.sweeping = !state.sweeping;
+    sweepBtn.classList.toggle('active', state.sweeping);
+    sweepBtn.textContent = state.sweeping ? '⏹ Zatrzymaj przemiatanie' : '▶ Start przemiatania 20–100 kHz';
+    callHaService('switch', state.sweeping ? 'turn_on' : 'turn_off', {
+      entity_id: 'switch.esp32_rlc_symulator_przemiatanie_20_100_khz'
+    });
+  });
+
+  // Pętla przemiatania (150 ms)
+  setInterval(() => {
+    if (!state.sweeping) return;
+    let next = state.freq + state.sweepStep;
+    if (next > 100000) next = 20000;
+    state.freq = next;
+    freqInput.value = next;
+    freqSlider.value = next;
+    if (state.haConnected) {
+      callHaService('number', 'set_value', { entity_id: 'number.esp32_rlc_symulator_1_czestotliwosc_hz', value: next });
+    }
+  }, 150);
+
+  // Odpytywanie ADC z Home Assistant (200 ms)
+  setInterval(pollHaStates, 200);
+
+  // Rysowanie oscyloskopu na Canvas
+  let animPhase = 0;
+  function drawScope() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+    const midY = h / 2;
+    const maxV = parseFloat(voltScaleSel.value);
+    const windowUs = parseFloat(timeWindowSel.value);
+
+    // Tło i siatka
+    ctx.fillStyle = '#070a0e';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = '#16202a';
+    ctx.lineWidth = 1;
+    const cols = 10;
+    const rows = 8;
+    for (let i = 1; i < cols; i++) {
+      const x = (w / cols) * i;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let j = 1; j < rows; j++) {
+      const y = (h / rows) * j;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+
+    // Oś 0V
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(w, midY); ctx.stroke();
+
+    // Linia progu neonówki (+85V)
+    const neonY = midY - (85 / maxV) * (h / 2);
+    ctx.strokeStyle = '#ef4444';
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(0, neonY); ctx.lineTo(w, neonY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Próg neonówki (85 V)', 10, neonY - 5);
+
+    const { f0, clampedPeak, phaseShift } = calcResonance();
+    const activePeak = state.haConnected ? state.measuredAdcV : clampedPeak;
+
+    // Aktualizacja kafelków
+    f0Val.textContent = (f0 / 1000).toFixed(2) + ' kHz';
+    vPeakVal.textContent = activePeak.toFixed(1) + ' V';
+    neonLamp.classList.toggle('lit', activePeak >= 85.0);
+
+    const periodUs = 1e6 / state.freq;
+    const dutyRatio = state.duty / 100;
+
+    // CH1: Prostokąt PWM (żółty)
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let px = 0; px <= w; px += 2) {
+      const tUs = (px / w) * windowUs;
+      const phase = ((tUs + animPhase) % periodUs) / periodUs;
+      const v = phase < dutyRatio ? state.supplyV : 0;
+      const y = midY - (v / maxV) * (h / 2);
+      if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    }
+    ctx.stroke();
+
+    // CH2: Model teoretyczny LC (niebieski)
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let px = 0; px <= w; px += 2) {
+      const tUs = (px / w) * windowUs;
+      const v = clampedPeak * Math.sin(2 * Math.PI * state.freq * ((tUs + animPhase) * 1e-6) - phaseShift);
+      const y = midY - (v / maxV) * (h / 2);
+      if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+    }
+    ctx.stroke();
+
+    // CH3: Pomiar rzeczywisty ADC z ESP32 (zielony - widoczny po połączeniu z HA)
+    if (state.haConnected) {
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let px = 0; px <= w; px += 2) {
+        const tUs = (px / w) * windowUs;
+        const v = state.measuredAdcV * Math.sin(2 * Math.PI * state.freq * ((tUs + animPhase) * 1e-6));
+        const y = midY - (v / maxV) * (h / 2);
+        if (px === 0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+      }
+      ctx.stroke();
+    }
+
+    animPhase = (animPhase + 0.15) % 1000;
+    requestAnimationFrame(drawScope);
+  }
+
+  requestAnimationFrame(drawScope);
+</script>
+</body>
+</html>
